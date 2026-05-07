@@ -34,6 +34,7 @@ function App() {
   const [timeCredit, setTimeCredit] = useState(0);
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [editTimeStr, setEditTimeStr] = useState('');
+  const [jumpStr, setJumpStr] = useState('');
   
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
@@ -232,7 +233,6 @@ function App() {
       if (sessionStateRef.current === 'idle') return;
 
       scrubbing = true;
-      if (sessionStateRef.current === 'running') pauseRef.current();
 
       const time = getTimeFromEvent(e);
       seekRef.current(time * 1000);
@@ -485,6 +485,17 @@ function App() {
     setEditingTimeId(null);
   }, [editTimeStr]);
 
+  const handleJump = useCallback(() => {
+    const val = jumpStr.trim();
+    if (!val) return;
+    let offsetMin = parseFloat(val);
+    if (!isNaN(offsetMin)) {
+      const offsetMs = Math.round(offsetMin * 60 * 1000);
+      seek(Math.max(0, elapsed + offsetMs));
+    }
+    setJumpStr('');
+  }, [jumpStr, seek, elapsed]);
+
   const handleResizeStart = useCallback((e: React.MouseEvent, id: string, currentHeight: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -689,7 +700,7 @@ function App() {
         </div>
       </header>
 
-      {sessionState === 'idle' && (
+      {(sessionState === 'idle' || sessionState === 'paused') && (
         <div className="add-section">
           <form className="add-form" onSubmit={handleSubmit}>
             <div className="picker-row">
@@ -1022,6 +1033,26 @@ function App() {
         <div className="timer-block timer-session">
           <span className="timer-label">⏱ Session</span>
           <span className="timer-value timer-main">{formatTime(elapsed, true)}</span>
+          <div className="timer-jump">
+            <input
+              className="jump-input"
+              type="text"
+              inputMode="decimal"
+              placeholder="+5 or -2"
+              value={jumpStr}
+              onChange={(e) => setJumpStr(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleJump(); }}
+              disabled={sessionState === 'idle' || sessionState === 'finished'}
+            />
+            <button
+              className="btn btn-jump"
+              onClick={handleJump}
+              disabled={sessionState === 'idle' || sessionState === 'finished'}
+              title="Jump to time"
+            >
+              ⏩
+            </button>
+          </div>
           <span className="timer-planned">
             Planned: {formatTime(totalPlannedSec * 1000, false)}
           </span>

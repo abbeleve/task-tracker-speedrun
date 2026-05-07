@@ -1045,3 +1045,40 @@
   text-align: center;
   outline: none;
 }
+
+.timer-jump {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.jump-input {
+  width: 64px;
+  padding: 4px 6px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  text-align: center;
+  outline: none;
+}
+
+.jump-input:focus {
+  border-color: var(--accent-cyan);
+}
+
+.btn-jump {
+  background: var(--bg-surface);
+  color: var(--accent-cyan);
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+.btn-jump:hover:not(:disabled) {
+  background: var(--accent-cyan);
+  color: #000;
+}
