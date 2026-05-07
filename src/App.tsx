@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Task, Template } from './types';
-import { DEFAULT_EMOJI, DEFAULT_COLOR, TASK_COLORS, TASK_EMOJIS } from './types';
+import { DEFAULT_EMOJI, DEFAULT_COLOR, TASK_COLORS, TASK_EMOJIS, ALL_EMOJIS } from './types';
 import { useTimer, formatTime, formatDelta } from './useTimer';
 import './App.css';
 
@@ -25,6 +25,7 @@ function App() {
   const [newMinutes, setNewMinutes] = useState('5');
   const [newEmoji, setNewEmoji] = useState(DEFAULT_EMOJI);
   const [newColor, setNewColor] = useState(DEFAULT_COLOR);
+  const [showEmojiPopup, setShowEmojiPopup] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [showPresets, setShowPresets] = useState(true);
@@ -93,7 +94,7 @@ function App() {
   // Pixels → time converter for scrubbing (stable ref, refreshed each render)
   const calcTimeFromPxRef = useRef<(px: number) => number>(() => 0);
   calcTimeFromPxRef.current = (px: number) => {
-    let remaining = Math.max(0, px);
+    let remaining = Math.max(0, Math.min(px, timelineHeight));
     let time = 0;
     for (let i = 0; i < sortedTasks.length; i++) {
       const t = sortedTasks[i];
@@ -105,7 +106,7 @@ function App() {
       remaining -= bH;
       time += t.plannedTime;
     }
-    return time;
+    return Math.min(time, totalPlannedSec);
   };
 
   const taskLayout = useMemo(() => {
@@ -224,7 +225,8 @@ function App() {
 
     const onMouseDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('button, input, select, a, .task-block[draggable="true"]')) return;
+      // Only scrub when clicking on the thermo column or ruler
+      if (!target.closest('.timeline-thermo, .timeline-ruler')) return;
       if (sessionStateRef.current === 'idle') return;
 
       scrubbing = true;
@@ -628,17 +630,61 @@ function App() {
       {sessionState === 'idle' && (
         <div className="add-section">
           <form className="add-form" onSubmit={handleSubmit}>
-            <div className="emoji-picker">
-              {TASK_EMOJIS.map((em) => (
+            <div className="picker-row">
+              <div className="emoji-picker">
+                {TASK_EMOJIS.map((em) => (
+                  <button
+                    key={em}
+                    type="button"
+                    className={`emoji-opt ${newEmoji === em ? 'active' : ''}`}
+                    onClick={() => setNewEmoji(em)}
+                  >
+                    {em}
+                  </button>
+                ))}
                 <button
-                  key={em}
                   type="button"
-                  className={`emoji-opt ${newEmoji === em ? 'active' : ''}`}
-                  onClick={() => setNewEmoji(em)}
+                  className="emoji-opt emoji-more"
+                  onClick={() => setShowEmojiPopup(!showEmojiPopup)}
+                  title="More emojis"
                 >
-                  {em}
+                  ＋
                 </button>
-              ))}
+                {showEmojiPopup && (
+                  <div className="emoji-popup">
+                    <div className="emoji-popup-grid">
+                      {ALL_EMOJIS.map((em) => (
+                        <button
+                          key={em}
+                          type="button"
+                          className={`emoji-popup-item ${newEmoji === em ? 'active' : ''}`}
+                          onClick={() => { setNewEmoji(em); setShowEmojiPopup(false); }}
+                        >
+                          {em}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="color-picker">
+                {TASK_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`color-opt ${newColor === c ? 'active' : ''}`}
+                    style={{ background: c }}
+                    onClick={() => setNewColor(c)}
+                  />
+                ))}
+                <input
+                  type="color"
+                  className="color-input"
+                  value={newColor}
+                  onChange={(e) => setNewColor(e.target.value)}
+                  title="Pick any color"
+                />
+              </div>
             </div>
             <div className="add-row">
               <span className="selected-emoji">{newEmoji}</span>
@@ -658,17 +704,6 @@ function App() {
                 className="input-minutes"
               />
               <span className="input-label">min</span>
-              <div className="color-picker">
-                {TASK_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`color-opt ${newColor === c ? 'active' : ''}`}
-                    style={{ background: c }}
-                    onClick={() => setNewColor(c)}
-                  />
-                ))}
-              </div>
               <button type="submit" className="btn btn-add">
                 + Add
               </button>
