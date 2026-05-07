@@ -4,6 +4,7 @@ import type { SessionState } from './types';
 export function useTimer() {
   const [elapsed, setElapsed] = useState(0);
   const [sessionState, setSessionState] = useState<SessionState>('idle');
+  const stateRef = useRef<SessionState>('idle');
   const startRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
@@ -16,12 +17,14 @@ export function useTimer() {
   }, []);
 
   const start = useCallback(() => {
+    stateRef.current = 'running';
     startRef.current = performance.now();
     rafRef.current = requestAnimationFrame(tick);
     setSessionState('running');
   }, [tick]);
 
   const pause = useCallback(() => {
+    stateRef.current = 'paused';
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     elapsedRef.current += performance.now() - startRef.current;
     setElapsed(elapsedRef.current);
@@ -29,12 +32,14 @@ export function useTimer() {
   }, []);
 
   const resume = useCallback(() => {
+    stateRef.current = 'running';
     startRef.current = performance.now();
     rafRef.current = requestAnimationFrame(tick);
     setSessionState('running');
   }, [tick]);
 
   const reset = useCallback(() => {
+    stateRef.current = 'idle';
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     elapsedRef.current = 0;
     startRef.current = 0;
@@ -43,6 +48,7 @@ export function useTimer() {
   }, []);
 
   const finish = useCallback(() => {
+    stateRef.current = 'finished';
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     elapsedRef.current += performance.now() - startRef.current;
     setElapsed(elapsedRef.current);
@@ -51,8 +57,7 @@ export function useTimer() {
 
   const seek = useCallback((ms: number) => {
     const clamped = Math.max(0, ms);
-    if (sessionState === 'running') {
-      // Restart tick from the new base
+    if (stateRef.current === 'running') {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       elapsedRef.current = clamped;
       startRef.current = performance.now();
@@ -62,7 +67,7 @@ export function useTimer() {
       elapsedRef.current = clamped;
       setElapsed(clamped);
     }
-  }, [sessionState, tick]);
+  }, [tick]);
 
   return { elapsed, sessionState, start, pause, resume, reset, finish, seek };
 }
