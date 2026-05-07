@@ -31,7 +31,9 @@ function App() {
   const [showPresets, setShowPresets] = useState(true);
   const [savedTemplates, setSavedTemplates] = useState<Template[]>([]);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
-  const [timeCredit, setTimeCredit] = useState(0); // seconds saved from early future-task completions
+  const [timeCredit, setTimeCredit] = useState(0);
+  const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
+  const [editTimeStr, setEditTimeStr] = useState('');
   
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
@@ -453,6 +455,35 @@ function App() {
 
   // --- Task resize: drag bottom edge to change planned time ---
   const resizeRef = useRef<{ id: string; startY: number; startH: number; maxPlanned: number } | null>(null);
+
+  const startEditTime = useCallback((id: string, plannedTime: number) => {
+    setEditingTimeId(id);
+    const totalSec = plannedTime;
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (h > 0) {
+      setEditTimeStr(`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+    } else {
+      setEditTimeStr(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+    }
+  }, []);
+
+  const commitEditTime = useCallback((id: string) => {
+    const parts = editTimeStr.split(':').map(p => parseInt(p) || 0);
+    let totalSec = 0;
+    if (parts.length === 3) {
+      totalSec = Math.min(parts[0], 99) * 3600 + Math.min(parts[1], 59) * 60 + Math.min(parts[2], 59);
+    } else if (parts.length === 2) {
+      totalSec = Math.min(parts[0], 99) * 60 + Math.min(parts[1], 59);
+    } else {
+      totalSec = Math.max(1, Math.round(parseFloat(editTimeStr) * 60));
+    }
+    if (totalSec > 0) {
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, plannedTime: totalSec } : t));
+    }
+    setEditingTimeId(null);
+  }, [editTimeStr]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent, id: string, currentHeight: number) => {
     e.preventDefault();
@@ -891,9 +922,27 @@ function App() {
                       )}
                       <span className="task-emoji">{task.emoji}</span>
                       <div className="block-info">
-                        <span className="task-planned-lg">
+                        {editingTimeId === task.id ? (
+                        <input
+                          className="edit-time-input"
+                          placeholder="m:ss or h:mm:ss"
+                          type="text"
+                          inputMode="decimal"
+                          value={editTimeStr}
+                          onChange={(e) => setEditTimeStr(e.target.value)}
+                          onBlur={() => commitEditTime(task.id)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') commitEditTime(task.id); if (e.key === 'Escape') setEditingTimeId(null); }}
+                          autoFocus
+                        />
+                      ) : (
+                        <span
+                          className="task-planned-lg task-planned-clickable"
+                          onClick={() => { if (sessionState === 'idle' || sessionState === 'paused') startEditTime(task.id, task.plannedTime); }}
+                          title="Click to edit time"
+                        >
                           {formatTime(task.plannedTime * 1000, false)}
                         </span>
+                      )}
                         <span className="task-name">{task.name}</span>
                         <span
                           className={`task-delta ${delta !== null && delta < 0 ? 'ahead' : ''} ${delta !== null && delta > 0 ? 'behind' : ''}`}

@@ -1020,3 +1020,28 @@
   background: var(--accent-purple);
 }
 
+
+.task-planned-clickable {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+}
+
+.task-planned-clickable:hover {
+  background: var(--bg-row-hover);
+}
+
+.edit-time-input {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--accent-cyan);
+  border-radius: 4px;
+  padding: 1px 4px;
+  width: 70px;
+  text-align: center;
+  outline: none;
+}
