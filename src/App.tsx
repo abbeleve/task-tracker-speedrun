@@ -451,6 +451,37 @@ function App() {
     });
   }, []);
 
+  // --- Task resize: drag bottom edge to change planned time ---
+  const resizeRef = useRef<{ id: string; startY: number; startH: number; maxPlanned: number } | null>(null);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent, id: string, currentHeight: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    resizeRef.current = { id, startY: e.clientY, startH: currentHeight, maxPlanned: maxPlannedSec || task.plannedTime };
+  }, [tasks, maxPlannedSec]);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const r = resizeRef.current;
+      const dy = e.clientY - r.startY;
+      const newH = Math.max(MIN_BLOCK_PX, r.startH + dy);
+      const ratio = (newH - MIN_BLOCK_PX) / (MAX_BLOCK_PX - MIN_BLOCK_PX);
+      const proportion = Math.max(0.01, ratio * ratio);
+      const newTime = Math.max(1, Math.round(proportion * r.maxPlanned));
+      setTasks(prev => prev.map(t => (t.id === r.id ? { ...t, plannedTime: newTime } : t)));
+    };
+    const onUp = () => { resizeRef.current = null; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
   const loadPresets = useCallback(() => {
     setTasks([]);
     setTimeCredit(0);
@@ -909,6 +940,12 @@ function App() {
                         )}
                       </div>
                     </div>
+                  {(sessionState === 'idle' || sessionState === 'paused') && (
+                    <div
+                      className="resize-handle"
+                      onMouseDown={(e) => handleResizeStart(e, task.id, layout.height)}
+                    />
+                  )}
                   </div>
                 );
               })}

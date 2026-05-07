@@ -529,7 +529,6 @@
   min-height: 0;
   overflow-y: auto !important;
   position: relative;
-  cursor: grab;
 }
 
 .empty-state {
@@ -736,6 +735,20 @@
 
 .task-block.completed {
   opacity: 0.6;
+}
+
+.task-block .resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  z-index: 5;
+}
+
+.task-block .resize-handle:hover {
+  background: rgba(255,255,255,0.08);
 }
 
 .task-block.dragging {
