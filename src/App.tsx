@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Task, Template } from './types';
+import type { Task, Template, TaskTemplate } from './types';
 import { DEFAULT_EMOJI, DEFAULT_COLOR, TASK_COLORS, TASK_EMOJIS, ALL_EMOJIS } from './types';
 import { useTimer, formatTime, formatDelta } from './useTimer';
 import './App.css';
@@ -35,6 +35,13 @@ function App() {
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [editTimeStr, setEditTimeStr] = useState('');
   const [jumpStr, setJumpStr] = useState('');
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [tplName, setTplName] = useState('');
+  const [tplMinutes, setTplMinutes] = useState('5');
+  const [tplEmoji, setTplEmoji] = useState(DEFAULT_EMOJI);
+  const [tplColor, setTplColor] = useState(DEFAULT_COLOR);
+  const [showTplEmojiPopup, setShowTplEmojiPopup] = useState(false);
   
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
@@ -55,6 +62,10 @@ function App() {
       } catch (e) {
         console.error('Failed to load templates', e);
       }
+    }
+    const storedTpl = localStorage.getItem('speedrun_task_templates');
+    if (storedTpl) {
+      try { setTaskTemplates(JSON.parse(storedTpl)); } catch {}
     }
   }, []);
 
@@ -219,11 +230,9 @@ function App() {
     let scrubbing = false;
 
     const getTimeFromEvent = (e: MouseEvent): number => {
-      const tracksEl = container.querySelector('.timeline-tracks') as HTMLElement;
-      if (!tracksEl) return 0;
-      const tracksRect = tracksEl.getBoundingClientRect();
-      const px = e.clientY - tracksRect.top + container.scrollTop;
-      return calcTimeFromPxRef.current(px);
+      const rect = container.getBoundingClientRect();
+      const px = e.clientY - rect.top + container.scrollTop;
+      return calcTimeFromPxRef.current(Math.max(0, px));
     };
 
     const onMouseDown = (e: MouseEvent) => {
@@ -496,6 +505,49 @@ function App() {
     setJumpStr('');
   }, [jumpStr, seek, elapsed]);
 
+  const saveTaskTemplates = useCallback((tpls: TaskTemplate[]) => {
+    localStorage.setItem('speedrun_task_templates', JSON.stringify(tpls));
+  }, []);
+
+  const addTaskTemplate = useCallback(() => {
+    if (!tplName.trim()) return;
+    const tpl: TaskTemplate = {
+      id: uid(), name: tplName.trim(),
+      plannedTime: Math.max(1, Math.round(parseFloat(tplMinutes) * 60)),
+      emoji: tplEmoji, color: tplColor,
+    };
+    const updated = [...taskTemplates, tpl];
+    setTaskTemplates(updated);
+    saveTaskTemplates(updated);
+    setTplName(''); setTplMinutes('5'); setTplEmoji(DEFAULT_EMOJI); setTplColor(DEFAULT_COLOR);
+  }, [tplName, tplMinutes, tplEmoji, tplColor, taskTemplates, saveTaskTemplates]);
+
+  const deleteTaskTemplate = useCallback((id: string) => {
+    const updated = taskTemplates.filter(t => t.id !== id);
+    setTaskTemplates(updated);
+    saveTaskTemplates(updated);
+  }, [taskTemplates, saveTaskTemplates]);
+
+  const addTaskFromTemplate = useCallback((tpl: TaskTemplate) => {
+    const task: Task = {
+      id: uid(), name: tpl.name, plannedTime: tpl.plannedTime,
+      completedAt: null, order: tasks.length, emoji: tpl.emoji, color: tpl.color,
+    };
+    setTasks(prev => [...prev, task]);
+  }, [tasks.length]);
+
+  const handleTimelineDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData('text/plain');
+    const tpl = taskTemplates.find(t => t.id === id);
+    if (tpl) addTaskFromTemplate(tpl);
+  }, [taskTemplates, addTaskFromTemplate]);
+
+  const handleTimelineDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
   const handleResizeStart = useCallback((e: React.MouseEvent, id: string, currentHeight: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -631,6 +683,13 @@ function App() {
         <h1>
           <span className="icon">⏱</span> SpeedRun Tasks
         </h1>
+        <button
+          className="btn btn-sidebar"
+          onClick={() => setShowSidebar(!showSidebar)}
+          title="Task Templates"
+        >
+          📋 {showSidebar ? 'Hide' : 'Templates'}
+        </button>
         <div className="session-controls">
           {sessionState === 'idle' && (
             <>
@@ -835,7 +894,7 @@ function App() {
         </div>
       )}
 
-      <div className="timeline-container" ref={timelineRef}>
+      <div className="timeline-container" ref={timelineRef} onDragOver={handleTimelineDragOver} onDrop={handleTimelineDrop}>
         {sortedTasks.length === 0 && sessionState === 'idle' ? (
           <div className="empty-state">
             <p>Add tasks to create your speedrun splits</p>
@@ -896,12 +955,26 @@ function App() {
                 const plannedEndSec = plannedStartSec + task.plannedTime;
 
                 let delta: number | null = null;
+                let remaining: number | null = null;
                 if (isCompleted && task.completedAt !== null) {
                   delta = (task.completedAt - plannedEndSec) * 1000;
-                } else if (isCurrent && sessionState === 'running') {
-                  const actualProgressSec = sessionElapsedSec - plannedStartSec;
-                  const remainingPlanned = task.plannedTime - actualProgressSec;
-                  delta = -(remainingPlanned + timeCredit) * 1000;
+                } else if (sessionState === 'running' || sessionState === 'paused') {
+                  if (isCurrent) {
+                    // Start from the latest completed task's actual completion time
+                    let taskStart = 0;
+                    for (const st of sortedTasks) {
+                      if (st.completedAt !== null && st.completedAt > taskStart) {
+                        taskStart = st.completedAt;
+                      }
+                    }
+                    const elapsedInTask = Math.max(0, sessionElapsedSec - taskStart);
+                    remaining = (task.plannedTime - elapsedInTask) * 1000;
+                  }
+                  if (isCurrent && sessionState === 'running') {
+                    const actualProgressSec = sessionElapsedSec - plannedStartSec;
+                    const remainingPlanned = task.plannedTime - actualProgressSec;
+                    delta = -(remainingPlanned + timeCredit) * 1000;
+                  }
                 }
 
                 let segmentTime: string | null = null;
@@ -921,7 +994,7 @@ function App() {
                     key={task.id}
                     className={`task-block ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''} ${dragIdx === idx ? 'dragging' : ''} ${dragOverIdx === idx && dragIdx !== idx ? 'drag-over' : ''}`}
                     style={{ top: layout.offset, height: layout.height, '--task-color': task.color } as React.CSSProperties}
-                    draggable={sessionState === 'idle'}
+                    draggable={sessionState === 'idle' || sessionState === 'paused'}
                     onDragStart={() => onDragStart(idx)}
                     onDragOver={(e) => onDragOver(e, idx)}
                     onDrop={() => onDrop(idx)}
@@ -964,6 +1037,11 @@ function App() {
                     </div>
 
                     <div className="block-right">
+                      {remaining !== null && (
+                        <span className={`task-remaining ${remaining < 0 ? 'overdue' : ''}`}>
+                          {formatTime(Math.abs(remaining), true)}
+                        </span>
+                      )}
                       <span className="task-segment">{segmentTime ?? '—'}</span>
                       {sessionStartTime !== null && (
                         <span className="task-realtime">
@@ -1058,6 +1136,58 @@ function App() {
           </span>
         </div>
       </footer>
+      {showSidebar && (
+        <div className="sidebar">
+          <div className="sidebar-header">
+            <span>📋 Task Templates</span>
+            <button className="btn btn-sidebar-close" onClick={() => setShowSidebar(false)}>✕</button>
+          </div>
+          <div className="sidebar-form">
+            <span className="sidebar-emoji">{tplEmoji}</span>
+            <input className="sidebar-input" placeholder="Name" value={tplName} onChange={e => setTplName(e.target.value)} />
+            <input className="sidebar-input sidebar-input-sm" placeholder="min" value={tplMinutes} onChange={e => setTplMinutes(e.target.value)} />
+            <button className="btn btn-add btn-add-sm" onClick={addTaskTemplate}>+</button>
+          </div>
+          <div className="sidebar-emoji-row">
+            {TASK_EMOJIS.map(em => (
+              <button key={em} type="button" className={`emoji-opt ${tplEmoji===em?'active':''}`} onClick={()=>setTplEmoji(em)}>{em}</button>
+            ))}
+            <button type="button" className="emoji-opt emoji-more" onClick={()=>setShowTplEmojiPopup(!showTplEmojiPopup)} title="More">＋</button>
+            {showTplEmojiPopup && (
+              <div className="emoji-popup tpl-popup">
+                <div className="emoji-popup-grid">
+                  {ALL_EMOJIS.map(em => (
+                    <button key={em} type="button" className={`emoji-popup-item ${tplEmoji===em?'active':''}`} onClick={()=>{setTplEmoji(em);setShowTplEmojiPopup(false)}}>{em}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="sidebar-color-row">
+            {TASK_COLORS.map(c => (
+              <button key={c} className={`color-opt ${tplColor===c?'active':''}`} style={{background:c}} onClick={()=>setTplColor(c)} />
+            ))}
+            <input type="color" className="color-input" value={tplColor} onChange={e=>setTplColor(e.target.value)} title="Pick any color" />
+          </div>
+          <div className="sidebar-list">
+            {taskTemplates.map(tpl => (
+              <div
+                key={tpl.id}
+                className="sidebar-card"
+                draggable
+                onDragStart={e => { e.dataTransfer.setData('text/plain', tpl.id); e.dataTransfer.effectAllowed = 'copy'; }}
+              >
+                <span className="sidebar-card-emoji">{tpl.emoji}</span>
+                <span className="sidebar-card-name">{tpl.name}</span>
+                <span className="sidebar-card-time">{formatTime(tpl.plannedTime*1000, false)}</span>
+                <button className="btn btn-sidebar-del" onClick={()=>deleteTaskTemplate(tpl.id)}>✕</button>
+              </div>
+            ))}
+            {taskTemplates.length === 0 && <p className="sidebar-empty">No templates yet. Create one above.</p>}
+          </div>
+          <p className="sidebar-hint">Drag cards onto timeline to add tasks</p>
+        </div>
+      )}
     </div>
   );
 }

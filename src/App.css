@@ -607,7 +607,7 @@
 
 /* ===== Thermometer Column ===== */
 .timeline-thermo {
-  width: 24px;
+  width: 36px;
   position: relative;
   flex-shrink: 0;
   margin: 0 4px;
@@ -620,7 +620,7 @@
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 4px;
+  width: 8px;
   background: var(--border);
   border-radius: 2px;
 }
@@ -631,7 +631,7 @@
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 6px;
+  width: 10px;
   height: 0;
   border-radius: 3px;
   pointer-events: none;
@@ -645,8 +645,8 @@
   position: absolute;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 26px;
-  height: 26px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: var(--bg-primary);
   border: 2px solid var(--border);
@@ -663,7 +663,7 @@
 }
 
 .thermo-dot-emoji {
-  font-size: 0.75rem;
+  font-size: 0.95rem;
   line-height: 1;
 }
 
@@ -681,10 +681,10 @@
 .thermo-marker-dot {
   position: absolute;
   left: 50%;
-  top: -8px;
+  top: -10px;
   transform: translateX(-50%);
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #fff;
   border: 3px solid var(--accent-cyan);
@@ -693,10 +693,10 @@
 
 .thermo-marker-glow {
   position: absolute;
-  left: -12px;
-  right: -12px;
-  top: -24px;
-  height: 48px;
+  left: -16px;
+  right: -16px;
+  top: -28px;
+  height: 56px;
   background: radial-gradient(
     ellipse at center,
     rgba(0, 212, 255, 0.3) 0%,
@@ -811,8 +811,8 @@
 
 .block-info .task-delta {
   font-family: var(--font-mono);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: var(--text-dim);
 }
 
@@ -855,7 +855,7 @@
 
 .task-segment {
   font-family: var(--font-mono);
-  font-size: 0.95rem;
+  font-size: 1.4rem;
   font-weight: 600;
   color: var(--text-secondary);
   min-width: 65px;
@@ -864,7 +864,7 @@
 
 .task-realtime {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 1.2rem;
   color: var(--text-dim);
   min-width: 50px;
   text-align: right;
@@ -926,7 +926,7 @@
 .timer-value {
   display: block;
   font-family: var(--font-mono);
-  font-size: 1.8rem;
+  font-size: 2.4rem;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: 1px;
@@ -941,7 +941,7 @@
 }
 
 .timer-main {
-  font-size: 2.2rem;
+  font-size: 3rem;
   color: var(--accent-gold) !important;
   text-shadow: 0 0 10px rgba(241, 196, 15, 0.3);
 }
@@ -1081,4 +1081,198 @@
 .btn-jump:hover:not(:disabled) {
   background: var(--accent-cyan);
   color: #000;
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 10px;
+  overflow-y: auto;
+  box-shadow: -4px 0 16px rgba(0,0,0,0.3);
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.sidebar-form {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.sidebar-emoji {
+  font-size: 1.2rem;
+}
+
+.sidebar-input {
+  flex: 1;
+  padding: 6px 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.sidebar-input:focus {
+  border-color: var(--accent-cyan);
+}
+
+.sidebar-input-sm {
+  width: 44px;
+  flex: 0;
+  text-align: center;
+}
+
+.btn-sidebar {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  padding: 6px 12px;
+}
+
+.btn-sidebar:hover {
+  background: var(--accent-cyan);
+  color: #000;
+}
+
+.btn-add-sm {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+}
+
+.btn-sidebar-close {
+  background: transparent;
+  color: var(--text-dim);
+  padding: 2px 6px;
+  font-size: 0.9rem;
+}
+
+.btn-sidebar-close:hover {
+  color: var(--accent-red);
+}
+
+.sidebar-emoji-row, .sidebar-color-row {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: grab;
+  transition: background 0.15s;
+}
+
+.sidebar-card:hover {
+  background: var(--bg-row-hover);
+  border-color: var(--accent-cyan);
+}
+
+.sidebar-card:active {
+  cursor: grabbing;
+}
+
+.sidebar-card-emoji {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.sidebar-card-name {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-card-time {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.btn-sidebar-del {
+  background: transparent;
+  color: var(--text-dim);
+  padding: 2px 6px;
+  font-size: 0.7rem;
+}
+
+.btn-sidebar-del:hover {
+  color: var(--accent-red);
+}
+
+.sidebar-empty {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  padding: 20px 0;
+}
+
+.sidebar-hint {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.7rem;
+}
+
+.sidebar-emoji-row {
+  position: relative;
+}
+
+.tpl-popup {
+  
+  top: 100% !important;
+  max-width: 220px !important;
+  right: 0 !important;
+  left: auto !important;
+}
+
+.tpl-popup .emoji-popup-grid {
+  grid-template-columns: repeat(8, 1fr) !important;
+  max-height: 140px !important;
+}
+
+.task-remaining {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  min-width: 75px;
+  text-align: right;
+}
+
+.task-remaining.overdue {
+  color: var(--accent-red);
 }
